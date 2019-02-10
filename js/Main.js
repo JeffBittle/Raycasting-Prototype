@@ -45,7 +45,6 @@ const worldMap = [
 glMatrix.glMatrix.setMatrixArrayType(Array);
 let screen, engine;
 let position = glMatrix.vec2.fromValues(11.5,11.5),
-    prevPosition = glMatrix.vec2.clone(position),
     nextPosition = glMatrix.vec2.clone(position),
     dirIndex = 0,
     direction = glMatrix.vec2.fromValues(DIRS[dirIndex][0], DIRS[dirIndex][1]),
@@ -53,7 +52,8 @@ let position = glMatrix.vec2.fromValues(11.5,11.5),
     plane = glMatrix.vec2.fromValues(0, 0.66),
     screenWidth = 512,
     screenHeight = 384,
-    turnLeft = turnRight = goForward = goBack = turningLeft = turningRight = movingForward = movingBackward = false;
+    turnLeft = turnRight = goForward = goBack = turningLeft = turningRight = movingForward = movingBackward = false,
+    renderNextFrame = true;
 
 function update(_deltaTime) {
   let turn = 0;
@@ -108,6 +108,7 @@ function update(_deltaTime) {
     if(glMatrix.vec2.equals(position, nextPosition)) {
       glMatrix.vec2.copy(position, nextPosition);
       movingForward = movingBackward = false;
+      renderNextFrame = true;
     }
   }
 
@@ -123,6 +124,7 @@ function update(_deltaTime) {
       glMatrix.vec2.copy(direction, nextDirection);
       glMatrix.vec2.set(plane, PLANES[dirIndex][0], PLANES[dirIndex][1]);
       turningLeft = turningRight = false;
+      renderNextFrame = true;
     }
   }
 }
@@ -142,6 +144,12 @@ function changeDirection(_ccw = false) {
 }
 
 function render() {
+  if(!turningLeft && !turningRight && !movingForward && !movingBackward && !renderNextFrame) {
+    return;
+  }
+  if(renderNextFrame) {
+    renderNextFrame = false;
+  }
   screen.fillStyle = "#333333";
   screen.fillRect(0,0, screenWidth, screenHeight / 2);
   screen.fillStyle = "#7f7f7f";
