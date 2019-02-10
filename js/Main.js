@@ -1,17 +1,3 @@
-glMatrix.glMatrix.setMatrixArrayType(Array);
-let screen, engine;
-let position = glMatrix.vec2.fromValues(11.5,11.5),
-    direction = glMatrix.vec2.fromValues(-1, 0),
-    plane = glMatrix.vec2.fromValues(0, 0.66),
-    screenWidth = 512,
-    screenHeight = 384
-    turnLeft = turnRight = goForward = goBack = false;
-
-const mapWidth = mapHeight = 24,
-      LEFT = 37,
-      UP = 38,
-      RIGHT = 39
-      DOWN = 40;
 const worldMap = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -37,41 +23,120 @@ const worldMap = [
   [1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-];
+],
+      mapWidth = mapHeight = 24,
+      LEFT = 37,
+      UP = 38,
+      RIGHT = 39
+      DOWN = 40,
+      DIRS = [
+        [-1, 0],
+        [0, -1],
+        [1, 0],
+        [0, 1]
+      ],
+      PLANES = [
+        [0, 0.66],
+        [-0.66, 0],
+        [0, -0.66],
+        [0.66, 0],
+      ];
+
+glMatrix.glMatrix.setMatrixArrayType(Array);
+let screen, engine;
+let position = glMatrix.vec2.fromValues(11.5,11.5),
+    prevPosition = glMatrix.vec2.clone(position),
+    nextPosition = glMatrix.vec2.clone(position),
+    dirIndex = 0,
+    direction = glMatrix.vec2.fromValues(DIRS[dirIndex][0], DIRS[dirIndex][1]),
+    nextDirection = glMatrix.vec2.clone(direction),
+    plane = glMatrix.vec2.fromValues(0, 0.66),
+    screenWidth = 512,
+    screenHeight = 384,
+    turnLeft = turnRight = goForward = goBack = turningLeft = turningRight = movingForward = movingBackward = false;
 
 function update(_deltaTime) {
   let turn = 0;
-  if(turnLeft) {
+  if(!turningLeft && !turningRight && !movingForward && !movingBackward) {
+    if(turnLeft) {
+      turningLeft = true;
+      changeDirection();
+      glMatrix.vec2.set(nextDirection, DIRS[dirIndex][0], DIRS[dirIndex][1]);
+    }
+
+    if(turnRight) {
+      turningRight = true;
+      changeDirection(true);
+      glMatrix.vec2.set(nextDirection, DIRS[dirIndex][0], DIRS[dirIndex][1]);
+    }
+
+    if(turnLeft && turnRight) {
+      turningLeft = turningRight = false;
+    }
+
+    if(goForward) {
+      if(worldMap[Math.floor(position[0] + direction[0])][Math.floor(position[1] + direction[1])] === 0) {
+        glMatrix.vec2.add(nextPosition, position, direction);
+        movingForward = true;
+      }
+    }
+
+    if(goBack) {
+      if(worldMap[Math.floor(position[0] - direction[0])][Math.floor(position[1] - direction[1])] === 0) {
+        glMatrix.vec2.subtract(nextPosition, position, direction);
+        movingBackward = true;
+      }
+    }
+
+    if(goForward && goBack) {
+      movingForward = movingBackward = false;
+    }
+  }
+
+  if(turningLeft) {
     turn = 1;
   }
-  if(turnRight) {
+
+  if(turningRight) {
     turn = -1;
   }
-  if(turnLeft && turnRight) {
-    turn = 0;
-  }
-  const moveSpeed = _deltaTime * 5.0,
-        rotationSpeed = _deltaTime * 1.5,
-        rotationMatrix = glMatrix.mat2.fromValues(Math.cos(rotationSpeed * turn), Math.sin(rotationSpeed * turn), -Math.sin(rotationSpeed * turn), Math.cos(rotationSpeed * turn));
 
-  glMatrix.vec2.transformMat2(direction, direction, rotationMatrix);
-  glMatrix.vec2.transformMat2(plane, plane, rotationMatrix);
+  const moveSpeed = _deltaTime * 5.0;
 
-  if(goForward) {
-    if(worldMap[Math.floor(position[0] + direction[0] * moveSpeed)][Math.floor(position[1])] === 0) {
-      position[0] += direction[0] * moveSpeed;
-    }
-    if(worldMap[Math.floor(position[0])][Math.floor(position[1] + direction[1] * moveSpeed)] === 0) {
-      position[1] += direction[1] * moveSpeed;
+  if(movingForward || movingBackward) {
+    glMatrix.vec2.scaleAndAdd(position, position, direction, moveSpeed);
+    if(glMatrix.vec2.equals(position, nextPosition)) {
+      glMatrix.vec2.copy(position, nextPosition);
+      movingForward = movingBackward = false;
     }
   }
 
-  if(goBack) {
-    if(worldMap[Math.floor(position[0] - direction[0] * moveSpeed)][Math.floor(position[1])] === 0) {
-      position[0] -= direction[0] * moveSpeed;
+  if(turningLeft || turningRight) {
+    const rotationSpeed = _deltaTime * 5.0,
+          cos = Math.cos(rotationSpeed * turn),
+          sin = Math.sin(rotationSpeed * turn);
+          rotationMatrix = glMatrix.mat2.fromValues(cos, sin, -sin, cos);
+
+    glMatrix.vec2.transformMat2(direction, direction, rotationMatrix);
+    glMatrix.vec2.transformMat2(plane, plane, rotationMatrix);
+    if(glMatrix.vec2.angle(direction, nextDirection) < 0.025) {
+      glMatrix.vec2.copy(direction, nextDirection);
+      glMatrix.vec2.set(plane, PLANES[dirIndex][0], PLANES[dirIndex][1]);
+      turningLeft = turningRight = false;
     }
-    if(worldMap[Math.floor(position[0])][Math.floor(position[1] - direction[1] * moveSpeed)] === 0) {
-      position[1] -= direction[1] * moveSpeed;
+  }
+}
+
+function changeDirection(_ccw = false) {
+  if(_ccw) {
+    dirIndex--;
+    if(dirIndex < 0) {
+      dirIndex += 4;
+    }
+  } else {
+    dirIndex++;
+    if(dirIndex >= 4) {
+      dirIndex -= 4;
     }
   }
 }
