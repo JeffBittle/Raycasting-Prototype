@@ -49,7 +49,7 @@ let position = glMatrix.vec2.fromValues(11.5,11.5),
     dirIndex = 0,
     direction = glMatrix.vec2.fromValues(DIRS[dirIndex][0], DIRS[dirIndex][1]),
     nextDirection = glMatrix.vec2.clone(direction),
-    plane = glMatrix.vec2.fromValues(0, 0.66),
+    plane = glMatrix.vec2.fromValues(PLANES[dirIndex][0], PLANES[dirIndex][1]),
     screenWidth = 512,
     screenHeight = 384,
     turnLeft = turnRight = goForward = goBack = turningLeft = turningRight = movingForward = movingBackward = false,
@@ -104,7 +104,11 @@ function update(_deltaTime) {
   const moveSpeed = _deltaTime * 5.0;
 
   if(movingForward || movingBackward) {
-    glMatrix.vec2.scaleAndAdd(position, position, direction, moveSpeed);
+    if(movingForward) {
+      glMatrix.vec2.scaleAndAdd(position, position, direction, moveSpeed);
+    } else if(movingBackward) {
+      glMatrix.vec2.scaleAndAdd(position, position, direction, -moveSpeed);
+    }
     if(glMatrix.vec2.equals(position, nextPosition)) {
       glMatrix.vec2.copy(position, nextPosition);
       movingForward = movingBackward = false;
