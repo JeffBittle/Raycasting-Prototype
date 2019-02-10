@@ -227,7 +227,7 @@ function render() {
     }
     drawEnd = lineHeight / 2 + screenHeight / 2;
     if(drawEnd >= screenHeight) {
-      drawEnd = screenHeight - 1;
+      drawEnd = screenHeight;
     }
 
     switch(worldMap[map.x][map.y]) {
