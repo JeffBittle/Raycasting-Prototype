@@ -25,10 +25,16 @@ const worldMap = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ],
       mapWidth = mapHeight = 24,
-      LEFT = 37,
-      UP = 38,
-      RIGHT = 39
-      DOWN = 40,
+      TURN_LEFT = 81,
+      UP = 87,
+      TURN_RIGHT = 69,
+      LEFT = 65,
+      DOWN = 83,
+      RIGHT = 68,
+      ALT_LEFT = 37,
+      ALT_UP = 38,
+      ALT_RIGHT = 39
+      ALT_DOWN = 40,
       DIRS = [
         [-1, 0],
         [0, -1],
@@ -47,26 +53,28 @@ let screen, engine;
 let position = glMatrix.vec2.fromValues(11.5,11.5),
     nextPosition = glMatrix.vec2.clone(position),
     dirIndex = 0,
+    moveDirIndex = dirIndex,
     direction = glMatrix.vec2.fromValues(DIRS[dirIndex][0], DIRS[dirIndex][1]),
     nextDirection = glMatrix.vec2.clone(direction),
     plane = glMatrix.vec2.fromValues(PLANES[dirIndex][0], PLANES[dirIndex][1]),
     screenWidth = 512,
     screenHeight = 384,
-    turnLeft = turnRight = goForward = goBack = turningLeft = turningRight = movingForward = movingBackward = false,
+    turnLeft = turnRight = goLeft = goRight = goForward = goBack = turningLeft = turningRight = moving = false,
     renderNextFrame = true;
 
 function update(_deltaTime) {
-  let turn = 0;
-  if(!turningLeft && !turningRight && !movingForward && !movingBackward) {
+  let turn = 0,
+      turnStep = 0;
+  if(!turningLeft && !turningRight && !moving) {
     if(turnLeft) {
       turningLeft = true;
-      changeDirection();
+      dirIndex = changeDirection(1);
       glMatrix.vec2.set(nextDirection, DIRS[dirIndex][0], DIRS[dirIndex][1]);
     }
 
     if(turnRight) {
       turningRight = true;
-      changeDirection(true);
+      dirIndex = changeDirection(-1);
       glMatrix.vec2.set(nextDirection, DIRS[dirIndex][0], DIRS[dirIndex][1]);
     }
 
@@ -74,22 +82,28 @@ function update(_deltaTime) {
       turningLeft = turningRight = false;
     }
 
-    if(goForward) {
-      if(worldMap[Math.floor(position[0] + direction[0])][Math.floor(position[1] + direction[1])] === 0) {
-        glMatrix.vec2.add(nextPosition, position, direction);
-        movingForward = true;
-      }
+    if(goLeft) {
+      turnStep = 1;
     }
 
     if(goBack) {
-      if(worldMap[Math.floor(position[0] - direction[0])][Math.floor(position[1] - direction[1])] === 0) {
-        glMatrix.vec2.subtract(nextPosition, position, direction);
-        movingBackward = true;
+      turnStep = 2;
+    }
+
+    if(goRight) {
+      turnStep = -1;
+    }
+
+    if(goLeft || goForward || goRight || goBack) {
+      moveDirIndex = changeDirection(turnStep);
+      if(worldMap[Math.floor(position[0] + DIRS[moveDirIndex][0])][Math.floor(position[1] + DIRS[moveDirIndex][1])] === 0) {
+        glMatrix.vec2.add(nextPosition, position, DIRS[moveDirIndex]);
+        moving = true;
       }
     }
 
-    if(goForward && goBack) {
-      movingForward = movingBackward = false;
+    if((goForward && goBack) || (goLeft && goRight)) {
+      moving = false;
     }
   }
 
@@ -103,15 +117,11 @@ function update(_deltaTime) {
 
   const moveSpeed = _deltaTime * 5.0;
 
-  if(movingForward || movingBackward) {
-    if(movingForward) {
-      glMatrix.vec2.scaleAndAdd(position, position, direction, moveSpeed);
-    } else if(movingBackward) {
-      glMatrix.vec2.scaleAndAdd(position, position, direction, -moveSpeed);
-    }
+  if(moving) {
+    glMatrix.vec2.scaleAndAdd(position, position, DIRS[moveDirIndex], moveSpeed);
     if(glMatrix.vec2.equals(position, nextPosition)) {
       glMatrix.vec2.copy(position, nextPosition);
-      movingForward = movingBackward = false;
+      moving = false;
       renderNextFrame = true;
     }
   }
@@ -127,28 +137,19 @@ function update(_deltaTime) {
     if(glMatrix.vec2.angle(direction, nextDirection) < 0.025) {
       glMatrix.vec2.copy(direction, nextDirection);
       glMatrix.vec2.set(plane, PLANES[dirIndex][0], PLANES[dirIndex][1]);
+      moveDirIndex = dirIndex;
       turningLeft = turningRight = false;
       renderNextFrame = true;
     }
   }
 }
 
-function changeDirection(_ccw = false) {
-  if(_ccw) {
-    dirIndex--;
-    if(dirIndex < 0) {
-      dirIndex += 4;
-    }
-  } else {
-    dirIndex++;
-    if(dirIndex >= 4) {
-      dirIndex -= 4;
-    }
-  }
+function changeDirection(_turnStep) {
+  return (dirIndex + 4 + _turnStep) % 4;
 }
 
 function render() {
-  if(!turningLeft && !turningRight && !movingForward && !movingBackward && !renderNextFrame) {
+  if(!turningLeft && !turningRight && !moving && !renderNextFrame) {
     return;
   }
   if(renderNextFrame) {
@@ -279,16 +280,26 @@ function verticalLine(_x, _start, _end, _color) {
 
 function keySet(_evt, _bool) {
   switch(_evt.keyCode) {
-    case LEFT:
+    case TURN_LEFT:
+    case ALT_LEFT:
       turnLeft = _bool;
     break;
-    case RIGHT:
+    case TURN_RIGHT:
+    case ALT_RIGHT:
       turnRight = _bool;
     break;
+    case LEFT:
+      goLeft = _bool;
+    break;
     case UP:
+    case ALT_UP:
       goForward = _bool;
     break;
+    case RIGHT:
+      goRight = _bool;
+    break;
     case DOWN:
+    case ALT_DOWN:
       goBack = _bool;
     break;
   }
