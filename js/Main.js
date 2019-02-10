@@ -127,14 +127,14 @@ function update(_deltaTime) {
   }
 
   if(turningLeft || turningRight) {
-    const rotationSpeed = _deltaTime * 5.0,
+    const rotationSpeed = _deltaTime * 4.0,
           cos = Math.cos(rotationSpeed * turn),
           sin = Math.sin(rotationSpeed * turn);
           rotationMatrix = glMatrix.mat2.fromValues(cos, sin, -sin, cos);
 
     glMatrix.vec2.transformMat2(direction, direction, rotationMatrix);
     glMatrix.vec2.transformMat2(plane, plane, rotationMatrix);
-    if(glMatrix.vec2.angle(direction, nextDirection) < 0.025) {
+    if(glMatrix.vec2.angle(direction, nextDirection) < 0.03) {
       glMatrix.vec2.copy(direction, nextDirection);
       glMatrix.vec2.set(plane, PLANES[dirIndex][0], PLANES[dirIndex][1]);
       moveDirIndex = dirIndex;
